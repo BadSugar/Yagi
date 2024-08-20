@@ -1,4 +1,10 @@
+project(YagiGhidra)
 set(DECOMPILER_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ghidra/Ghidra/Features/Decompiler/src/decompile/cpp")
+
+if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    set(MACOSX TRUE)
+    set(CMAKE_STATIC_LIBRARY_PREFIX "")
+endif()
 
 set(DECOMPILER_SOURCE_BASE_CXX
 		${DECOMPILER_SOURCE_DIR}/space.cc
@@ -152,7 +158,12 @@ target_link_libraries(libdecomp libbase libsleigh)
 target_include_directories(libdecomp PUBLIC "${DECOMPILER_SOURCE_DIR}")
 set_property(TARGET libdecomp PROPERTY FOLDER "ghidra")
 
-include(CmakeGenerateSLA)
+if (APPLE)
+    include(${CMAKE_SOURCE_DIR}/cmake/CmakeGenerateSLA.cmake)
+else()
+    include(CmakeGenerateSLA)
+endif()
+
 file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/sleigh")
 set(SLEIGH_DIR "${CMAKE_CURRENT_BINARY_DIR}/sleigh")
 

@@ -1,6 +1,9 @@
 #####################################################
 ########### Static library use for test #############
 #####################################################
+project(Yagi)
+cmake_minimum_required(VERSION 3.18)
+
 set(yagi_STATIC_SRC
 	src/yagiaction.cc
 	src/yagiarchitecture.cc
@@ -28,6 +31,18 @@ set(yagi_STATIC_INCLUDE
 	include/typeinfo.hh
 	include/yagirule.hh
 )
+
+if (APPLE)
+    link_directories(${CMAKE_SOURCE_DIR}/ghidra)
+    include_directories(${IDASDKDIR})
+    include_directories(${IDASDKDIR}/include)
+    include_directories(${IDASDKDIR}/lib/x64_mac_clang_64)
+    include_directories(${CMAKE_SOURCE_DIR}/ghidra/ghidra/Ghidra/Features/Decompiler/src/decompile/cpp)
+    FIND_LIBRARY(LIB_NAME_LIB libida64)
+    set(os_ MAC)
+    set(IdaSdk ${IDA_SDK_SOURCE_DIR})
+    set(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} ${CMAKE_SOURCE_DIR}/build_yagi)
+endif()
 
 add_library(yagi_static STATIC ${yagi_STATIC_INCLUDE} ${yagi_STATIC_SRC})
 target_compile_features(yagi_static PRIVATE cxx_std_17)
@@ -70,6 +85,17 @@ set(yagi_INCLUDE
 # needs IDA SDK for backend
 find_package(IdaSdk)
 
+if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    set(MACOSX TRUE)
+    set(CMAKE_MACOSX_RPATH 1)
+    set(CMAKE_STATIC_LIBRARY_PREFIX "")
+    link_directories(${CMAKE_SOURCE_DIR}/ghidra/)
+    # The referenced from issue is fixed with this line below
+    set(IDA_SDK_LIBS_MACOS "${IDASDKDIR}/lib/x64_mac_clang_64/")
+    target_link_libraries(yagi64 PRIVATE libbase.a libdecomp.a libsleigh.a ${IDA_SDK_LIBS_MACOS}/libida64.dylib)
+    #target_link_options(yagi PRIVATE /WHOLEARCHIVE:libbase.a)
+endif()
+
 if(MSVC)
 	add_definitions(
 		/wd4267
@@ -111,7 +137,9 @@ if(MSVC)
 	target_link_options(yagi64 PRIVATE /WHOLEARCHIVE:libbase.lib)
 endif()
 
-target_link_libraries(yagi64 libdecomp ${IDA_SDK_LIBS_IDA64})
+if (not APPLE)
+    target_link_libraries(yagi64 libdecomp ${IDA_SDK_LIBS_IDA64})
+endif()
 
 #####################################################
 # Target for Ida 32, but need to be built in 64 bits#
@@ -137,6 +165,14 @@ set_target_properties(yagi PROPERTIES
 	PREFIX ""
 )
 
+if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    set(MACOSX TRUE)
+    set(CMAKE_STATIC_LIBRARY_PREFIX "")
+    link_directories(${CMAKE_SOURCE_DIR}/ghidra/)
+    set(IDA_SDK_LIBS_MACOS "${IDASDKDIR}/lib/x64_mac_clang_64/")
+    target_link_libraries(yagi PRIVATE libbase.a libdecomp.a libsleigh.a ${IDA_SDK_LIBS_MACOS}/libida64.dylib)
+endif()
+
 if(MSVC)	
 	target_compile_definitions(yagi PRIVATE __NT__)
 
@@ -146,4 +182,6 @@ if(MSVC)
 	target_link_options(yagi PRIVATE /WHOLEARCHIVE:libbase.lib)
 endif()
 
-target_link_libraries(yagi libdecomp ${IDA_SDK_LIBS_IDA32})
+if (not APPLE)
+    target_link_libraries(yagi libdecomp.a ${IDA_SDK_LIBS_IDA32})
+endif()
